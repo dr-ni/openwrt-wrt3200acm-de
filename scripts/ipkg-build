@@ -45,7 +45,7 @@ pkg_appears_sane() {
 	arch="$(required_field Architecture)"
 
 	if echo "$pkg" | grep '[^a-zA-Z0-9_.+-]'; then
-		echo "*** Error: Package name $name contains illegal characters, (other than [a-z0-9.+-])" >&2
+		echo "*** Error: Package name '$pkg' contains illegal characters, (other than [a-z0-9.+-])" >&2
 		PKG_ERROR=1;
 	fi
 
@@ -181,7 +181,7 @@ for file_mode in $file_modes; do
 done
 $TAR -X "$tmp_dir"/tarX --format=gnu --numeric-owner --sort=name -cpf - --mtime="$TIMESTAMP" . | gzip -n - > "$tmp_dir"/data.tar.gz
 
-installed_size=$(stat -c "%s" "$tmp_dir"/data.tar.gz)
+installed_size=$(zcat < "$tmp_dir"/data.tar.gz | wc -c)
 sed -i -e "s/^Installed-Size: .*/Installed-Size: $installed_size/" \
 	"$pkg_dir"/$CONTROL/control
 

@@ -2,6 +2,7 @@
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
+#include <dt-bindings/leds/common.h>
 
 / {
 	#address-cells = <1>;
@@ -39,20 +40,23 @@
 				read-only;
 			};
 
-			factory: partition@40000 {
-				compatible = "nvmem-cells";
+			partition@40000 {
 				label = "factory";
 				reg = <0x40000 0x10000>;
-				#address-cells = <1>;
-				#size-cells = <1>;
 				read-only;
 
-				eeprom_factory_0: eeprom@0 {
-					reg = <0x0 0x200>;
-				};
+				nvmem-layout {
+					compatible = "fixed-layout";
+					#address-cells = <1>;
+					#size-cells = <1>;
 
-				macaddr_factory_4: macaddr@4 {
-					reg = <0x4 0x6>;
+					eeprom_factory_0: eeprom@0 {
+						reg = <0x0 0x200>;
+					};
+
+					macaddr_factory_4: macaddr@4 {
+						reg = <0x4 0x6>;
+					};
 				};
 			};
 
@@ -65,8 +69,7 @@
 	};
 
 	keys {
-		compatible = "gpio-keys-polled";
-		poll-interval = <100>;
+		compatible = "gpio-keys";
 
 		wps {
 			label = "wps";
@@ -96,7 +99,8 @@
 		};
 
 		led_power: power {
-			label = "blue:power";
+			function = LED_FUNCTION_POWER;
+			color = <LED_COLOR_ID_BLUE>;
 			gpios = <&gpio0 12 GPIO_ACTIVE_LOW>;
 		};
 

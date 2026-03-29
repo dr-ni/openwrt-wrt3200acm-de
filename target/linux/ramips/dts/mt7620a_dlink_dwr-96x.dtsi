@@ -7,6 +7,7 @@
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
+#include <dt-bindings/leds/common.h>
 #include <dt-bindings/mtd/partitions/uimage.h>
 
 / {
@@ -38,17 +39,20 @@
 		compatible = "gpio-leds";
 
 		led_status: status {
-			label = "green:status";
+			function = LED_FUNCTION_STATUS;
+			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&gpio0 7 GPIO_ACTIVE_LOW>;
 		};
 
 		wan {
-			label = "green:wan";
+			function = LED_FUNCTION_WAN;
+			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&gpio0 11 GPIO_ACTIVE_LOW>;
 		};
 
 		lan {
-			label = "green:lan";
+			function = LED_FUNCTION_LAN;
+			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&gpio0 12 GPIO_ACTIVE_LOW>;
 		};
 
@@ -150,24 +154,29 @@
 				reg = <0x10000 0xfe0000>;
 			};
 
-			config: partition@ff0000 {
-				compatible = "nvmem-cells";
+			partition@ff0000 {
 				label = "config";
 				reg = <0xff0000 0x10000>;
-				#address-cells = <1>;
-				#size-cells = <1>;
 				read-only;
 
-				eeprom_config_e08e: eeprom@e08e {
-					reg = <0xe08e 0x200>;
-				};
+				nvmem-layout {
+					compatible = "fixed-layout";
+					#address-cells = <1>;
+					#size-cells = <1>;
 
-				eeprom_config_e29e: eeprom@e29e {
-					reg = <0xe29e 0x200>;
-				};
+					eeprom_config_e08e: eeprom@e08e {
+						reg = <0xe08e 0x200>;
+					};
 
-				macaddr_config_e50e: macaddr@e50e {
-					reg = <0xe50e 0x6>;
+					eeprom_config_e29e: eeprom@e29e {
+						reg = <0xe29e 0x200>;
+					};
+
+					macaddr_config_e50e: macaddr@e50e {
+						compatible = "mac-base";
+						reg = <0xe50e 0x6>;
+						#nvmem-cell-cells = <1>;
+					};
 				};
 			};
 		};

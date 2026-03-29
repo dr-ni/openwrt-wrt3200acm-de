@@ -58,15 +58,8 @@
 	ath9k: wifi@0,0 {
 		compatible = "pci168c,0030";
 		reg = <0x0000 0 0 0 0>;
-		/* "mac-address" currently does not work for
-		   ath9k pci devices. these below are retained for future
-		   improvements. */
-		/* nvmem-cells = <&macaddr_wan 1>, <&cal_art_5000>;
-		   nvmem-cell-names = "mac-address", "calibration";
-		 */
-		qca,no-eeprom; /* remove this when "mac-address" works  */
-		gpio-controller;
-		#gpio-cells = <2>;
+		nvmem-cells = <&macaddr_wan 1>, <&cal_art_5000>;
+		nvmem-cell-names = "mac-address", "calibration";
 	};
 };
 
@@ -111,12 +104,10 @@
 				read-only;
 			};
 
-			mac: partition@fe0000 {
+			partition@fe0000 {
 				label = "mac";
 				reg = <0xfe0000 0x010000>;
 				read-only;
-
-				compatible = "nvmem-cells";
 
 				nvmem-layout {
 					compatible = "fixed-layout";
@@ -137,21 +128,23 @@
 				};
 			};
 
-			art: partition@ff0000 {
+			partition@ff0000 {
 				label = "art";
 				reg = <0xff0000 0x010000>;
 				read-only;
 
-				compatible = "nvmem-cells";
-				#address-cells = <1>;
-				#size-cells = <1>;
+				nvmem-layout {
+					compatible = "fixed-layout";
+					#address-cells = <1>;
+					#size-cells = <1>;
 
-				cal_art_1000: cal@1000 {
-					reg = <0x1000 0x440>;
-				};
+					cal_art_1000: cal@1000 {
+						reg = <0x1000 0x440>;
+					};
 
-				cal_art_5000: cal@5000 {
-					reg = <0x5000 0x440>;
+					cal_art_5000: cal@5000 {
+						reg = <0x5000 0x440>;
+					};
 				};
 			};
 		};

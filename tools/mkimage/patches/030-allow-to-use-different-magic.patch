@@ -24,16 +24,16 @@ This patch makes it possible to set a custom image magic.
  		"          -a ==> set load address to 'addr' (hex)\n"
  		"          -e ==> set entry point to 'ep' (hex)\n"
  		"          -n ==> set image name to 'name'\n"
-@@ -159,7 +161,7 @@ static int add_content(int type, const c
+@@ -162,7 +164,7 @@ static int add_content(int type, const c
  }
  
  static const char optstring[] =
--	"a:A:b:B:c:C:d:D:e:Ef:Fg:G:i:k:K:ln:N:o:O:p:qrR:stT:vVx";
-+	"a:A:b:B:c:C:d:D:e:Ef:Fg:G:i:k:K:lM:n:N:o:O:p:qrR:stT:vVx";
+-	"a:A:b:B:c:C:d:D:e:Ef:Fg:G:i:k:K:ln:N:o:O:p:qrR:stT:vVxy:Y:";
++	"a:A:b:B:c:C:d:D:e:Ef:Fg:G:i:k:K:lM:n:N:o:O:p:qrR:stT:vVxy:Y:";
  
  static const struct option longopts[] = {
  	{ "load-address", required_argument, NULL, 'a' },
-@@ -302,6 +304,14 @@ static void process_args(int argc, char
+@@ -308,6 +310,14 @@ static void process_args(int argc, char
  		case 'l':
  			params.lflag = 1;
  			break;
@@ -50,7 +50,7 @@ This patch makes it possible to set a custom image magic.
  			break;
 --- a/tools/default_image.c
 +++ b/tools/default_image.c
-@@ -63,7 +63,7 @@ static int image_verify_header(unsigned
+@@ -67,7 +67,7 @@ static int image_verify_header(unsigned
  	 */
  	memcpy(hdr, ptr, sizeof(struct legacy_img_hdr));
  
@@ -59,7 +59,7 @@ This patch makes it possible to set a custom image magic.
  		debug("%s: Bad Magic Number: \"%s\" is no valid image\n",
  		      params->cmdname, params->imagefile);
  		return -FDT_ERR_BADMAGIC;
-@@ -142,7 +142,7 @@ static void image_set_header(void *ptr,
+@@ -146,7 +146,7 @@ static void image_set_header(void *ptr,
  	}
  
  	/* Build new header */

@@ -3,6 +3,7 @@
 #include "vr9.dtsi"
 
 #include <dt-bindings/input/input.h>
+#include <dt-bindings/leds/common.h>
 #include <dt-bindings/mips/lantiq_rcu_gphy.h>
 
 / {
@@ -49,13 +50,15 @@
 		compatible = "gpio-leds";
 
 		power_green: power_green {
-			label = "green:power";
+			function = LED_FUNCTION_POWER;
+			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&gpio 6 GPIO_ACTIVE_LOW>;
 			default-state = "keep";
 		};
 
 		power_red: power_red {
-			label = "red:power";
+			function = LED_FUNCTION_POWER;
+			color = <LED_COLOR_ID_RED>;
 			gpios = <&gpio 5 GPIO_ACTIVE_LOW>;
 		};
 
@@ -158,7 +161,7 @@
 		#address-cells = <3>;
 		device_type = "pci";
 
-		wifi@168c,002e {
+		wifi@0,0 {
 			compatible = "pci168c,002e";
 			reg = <0 0 0 0 0>;
 			qca,no-eeprom; /* load from ath9k-eeprom-pci-0000:01:00.0.bin */
@@ -180,6 +183,13 @@
 };
 
 &gphy0 {
+	lantiq,gphy-mode = <GPHY_MODE_FE>;
+};
+
+/* This PHY is not used, but try to load the 100M FW too */
+&gphy1 {
+	status = "disabled";
+
 	lantiq,gphy-mode = <GPHY_MODE_FE>;
 };
 

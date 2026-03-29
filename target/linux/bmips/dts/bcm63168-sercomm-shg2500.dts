@@ -46,9 +46,8 @@
 		pci-bus = <1>;
 		pci-dev = <0>;
 
-		nvmem-cells = <&macaddr_cferom_6a0>;
+		nvmem-cells = <&macaddr_cferom_6a0 1>;
 		nvmem-cell-names = "mac-address";
-		mac-address-increment = <1>;
 
 		brcm,sprom = "brcm/bcm4360-sprom.bin";
 	};
@@ -61,7 +60,7 @@
 &ethernet {
 	status = "okay";
 
-	nvmem-cells = <&macaddr_cferom_6a0>;
+	nvmem-cells = <&macaddr_cferom_6a0 0>;
 	nvmem-cell-names = "mac-address";
 };
 
@@ -69,6 +68,8 @@
 	status = "okay";
 
 	led-controller@1 {
+		#address-cells = <1>;
+		#size-cells = <0>;
 		compatible = "sercomm,msp430-leds";
 		reg = <1>;
 		spi-max-frequency = <500000>;
@@ -110,7 +111,8 @@
 
 		led_power_red: led@8 {
 			reg = <8>;
-			label = "red:power";
+			function = LED_FUNCTION_POWER;
+			color = <LED_COLOR_ID_RED>;
 		};
 
 		led@9 {
@@ -161,7 +163,7 @@
 			port@8 {
 				reg = <8>;
 
-				phy-mode = "rgmii";
+				phy-mode = "rgmii-id";
 				ethernet = <&switch0port4>;
 
 				fixed-link {
@@ -192,10 +194,22 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 
-			cferom: partition@0 {
+			partition@0 {
 				label = "cferom";
 				reg = <0x0000000 0x0020000>;
 				read-only;
+
+				nvmem-layout {
+					compatible = "fixed-layout";
+					#address-cells = <1>;
+					#size-cells = <1>;
+
+					macaddr_cferom_6a0: macaddr@6a0 {
+						compatible = "mac-base";
+						reg = <0x6a0 0x6>;
+						#nvmem-cell-cells = <1>;
+					};
+				};
 			};
 
 			partition@20000 {
@@ -285,7 +299,7 @@
 			reg = <4>;
 			label = "extsw";
 
-			phy-mode = "rgmii";
+			phy-mode = "rgmii-id";
 
 			fixed-link {
 				speed = <1000>;
@@ -308,14 +322,4 @@
 
 &usbh {
 	status = "okay";
-};
-
-&cferom {
-	compatible = "nvmem-cells";
-	#address-cells = <1>;
-	#size-cells = <1>;
-
-	macaddr_cferom_6a0: macaddr@6a0 {
-		reg = <0x6a0 0x6>;
-	};
 };

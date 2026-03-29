@@ -39,20 +39,23 @@
 				read-only;
 			};
 
-			factory: partition@40000 {
-				compatible = "nvmem-cells";
+			partition@40000 {
 				label = "factory";
 				reg = <0x40000 0x10000>;
-				#address-cells = <1>;
-				#size-cells = <1>;
 				read-only;
 
-				eeprom_factory_0: eeprom@0 {
-					reg = <0x0 0x400>;
-				};
+				nvmem-layout {
+					compatible = "fixed-layout";
+					#address-cells = <1>;
+					#size-cells = <1>;
 
-				macaddr_factory_28: macaddr@28 {
-					reg = <0x28 0x6>;
+					eeprom_factory_0: eeprom@0 {
+						reg = <0x0 0x400>;
+					};
+
+					macaddr_factory_28: macaddr@28 {
+						reg = <0x28 0x6>;
+					};
 				};
 			};
 
@@ -65,11 +68,34 @@
 	};
 };
 
+&pinctrl {
+	ephy-digital;
+
+	sdxc_iot_mode: sdxc_iot_mode {
+		esd {
+			groups = "esd";
+			function = "iot";
+		};
+
+		sdxc {
+			groups = "sdmode";
+			function = "sdxc";
+		};
+	};
+};
+
 &state_default {
 	gpio {
 		groups = "wled_an", "refclk", "wdt";
 		function = "gpio";
 	};
+};
+
+&sdhci {
+	status = "okay";
+
+	pinctrl-0 = <&sdxc_iot_mode>;
+	pinctrl-1 = <&sdxc_iot_mode>;
 };
 
 &wmac {

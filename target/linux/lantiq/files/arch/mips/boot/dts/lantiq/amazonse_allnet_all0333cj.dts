@@ -1,3 +1,5 @@
+#include <dt-bindings/leds/common.h>
+
 #include "amazonse.dtsi"
 
 / {
@@ -28,13 +30,15 @@
 
 		/* power led: red=off, green=on */
 		power: power {
-			label = "green:power";
+			function = LED_FUNCTION_POWER;
+			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&gpio 13 GPIO_ACTIVE_LOW>;
 			default-state = "keep";
 		};
 
 		lan: lan {
-			label = "green:lan";
+			function = LED_FUNCTION_LAN;
+			color = <LED_COLOR_ID_GREEN>;
 			gpios = <&gpio 3 GPIO_ACTIVE_LOW>;
 		};
 
@@ -69,6 +73,14 @@
 
 &gsw {
 	phy-mode = "mii";
+
+	nvmem-cells = <&macaddr_uboot_ethaddr 0>;
+	nvmem-cell-names = "mac-address";
+};
+
+&ppe {
+	nvmem-cells = <&macaddr_uboot_ethaddr 1>;
+	nvmem-cell-names = "mac-address";
 };
 
 &localbus {
@@ -97,6 +109,14 @@
 				label = "u-boot-env";
 				reg = <0x3ff200 0xc00>;
 				read-only;
+
+				nvmem-layout {
+					compatible = "u-boot,env";
+
+					macaddr_uboot_ethaddr: ethaddr {
+						#nvmem-cell-cells = <1>;
+					};
+				};
 			};
 
 			partition@3ffe00 {
