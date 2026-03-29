@@ -59,12 +59,19 @@ else
 	-$(foreach pdir,$(PACKAGE_SUBDIRS),$(if $(wildcard $(pdir)/*.ipk),ln -s $(pdir)/*.ipk $(PACKAGE_DIR_ALL);))
 endif
 
+$(BUILD_KEY_APK_SEC):
+	$(STAGING_DIR_HOST)/bin/openssl ecparam -name prime256v1 -genkey -noout -out $(BUILD_KEY_APK_SEC)
+
+$(BUILD_KEY_APK_PUB): $(BUILD_KEY_APK_SEC)
+	$(STAGING_DIR_HOST)/bin/openssl ec -in $(BUILD_KEY_APK_SEC) -pubout > $(BUILD_KEY_APK_PUB)
+
 $(curdir)/merge-index: $(curdir)/merge
 ifneq ($(CONFIG_USE_APK),)
 	(cd $(PACKAGE_DIR_ALL) && $(STAGING_DIR_HOST)/bin/apk mkndx \
 			--root $(TOPDIR) \
 			--keys-dir $(TOPDIR) \
-			--sign $(BUILD_KEY_APK_SEC) \
+			--allow-untrusted \
+			$(if $(CONFIG_SIGNED_PACKAGES),--sign $(BUILD_KEY_APK_SEC),) \
 			--output packages.adb \
 			*.apk; \
 	)
@@ -75,9 +82,13 @@ endif
 ifndef SDK
   $(curdir)//compile = $(STAGING_DIR)/.prepared $(BIN_DIR)
 ifneq ($(CONFIG_USE_APK),)
-  $(curdir)/compile: $(curdir)/system/apk/host/compile
+  $(curdir)//compile += $(curdir)/system/apk/host/compile $(BUILD_KEY_APK_SEC) $(BUILD_KEY_APK_PUB)
 else
   $(curdir)/compile: $(curdir)/system/opkg/host/compile
+endif
+else
+ifneq ($(CONFIG_USE_APK),)
+  $(curdir)//compile += $(BUILD_KEY_APK_SEC) $(BUILD_KEY_APK_PUB)
 endif
 endif
 
@@ -88,7 +99,15 @@ $(curdir)/install: $(TMP_DIR)/.build $(curdir)/merge $(curdir)/merge-index
 ifneq ($(CONFIG_USE_APK),)
 	$(file >$(TMP_DIR)/apk_install_list,\
 	    $(foreach pkg,$(shell cat $(PACKAGE_INSTALL_FILES) 2>/dev/null),$(pkg)$(call GetABISuffix,$(pkg))))
-	$(call apk,$(TARGET_DIR)) add --initdb --no-scripts --arch $(ARCH_PACKAGES) $$(cat $(TMP_DIR)/apk_install_list)
+	$(call apk,$(TARGET_DIR)) add --no-cache --initdb --no-scripts --arch $(ARCH_PACKAGES) \
+		--repositories-file /dev/null --repository file://$(PACKAGE_DIR_ALL)/packages.adb \
+		$(if $(CONFIG_SIGNED_PACKAGES),,--allow-untrusted) \
+		$$(cat $(TMP_DIR)/apk_install_list) \
+			"base-files=$(shell cat $(STAGING_DIR)/base-files.version)" \
+			"libc=$(shell cat $(STAGING_DIR)/libc.version)" \
+			"kernel=$(subst -rc,_rc,$(shell cat $(STAGING_DIR)/kernel.version))"
+
+	rm -rf $(TARGET_DIR)/run
 else
 	$(file >$(TMP_DIR)/opkg_install_list,\
 	  $(call opkg_package_files,\
@@ -110,15 +129,19 @@ $(curdir)/index: FORCE
 	@echo Generating package index...
 ifneq ($(CONFIG_USE_APK),)
 	@for d in $(PACKAGE_SUBDIRS); do \
+		set -e; \
 		mkdir -p $$d; \
 		cd $$d || continue; \
 		ls *.apk >/dev/null 2>&1 || continue; \
 		$(STAGING_DIR_HOST)/bin/apk mkndx \
 			--root $(TOPDIR) \
 			--keys-dir $(TOPDIR) \
-			--sign $(BUILD_KEY_APK_SEC) \
+			--allow-untrusted \
+			$(if $(CONFIG_SIGNED_PACKAGES),--sign $(BUILD_KEY_APK_SEC),) \
 			--output packages.adb \
 			*.apk; \
+		$(STAGING_DIR_HOST)/bin/apk adbdump --format json packages.adb | \
+			$(SCRIPT_DIR)/make-index-json.py -f apk -a "$(ARCH_PACKAGES)" - > index.json; \
 	done
 else
 	@for d in $(PACKAGE_SUBDIRS); do ( \
@@ -130,10 +153,7 @@ else
 			$(call ERROR_MESSAGE,WARNING: Applying padding in $$d/Packages to workaround usign SHA-512 bug!); \
 			{ echo ""; echo ""; } >> Packages;; \
 		esac; \
-		echo -n '{"architecture": "$(ARCH_PACKAGES)", "packages":{' > index.json; \
-		sed -n -e 's/^Package: \(.*\)$$/"\1":/p' -e 's/^Version: \(.*\)$$/"\1",/p' Packages | tr '\n' ' ' >> index.json; \
-		echo '}}' >> index.json; \
-		sed -i 's/, }}/}}/' index.json; \
+		$(SCRIPT_DIR)/make-index-json.py -f opkg -a "$(ARCH_PACKAGES)" Packages > index.json; \
 		gzip -9nc Packages > Packages.gz; \
 	); done
 ifdef CONFIG_SIGNED_PACKAGES
@@ -153,6 +173,7 @@ ifdef CONFIG_JSON_CYCLONEDX_SBOM
 	); done
 endif
 endif
+	$(call sha256sums,$(OUTPUT_DIR)/packages/$(ARCH_PACKAGES),1)
 
 $(curdir)/flags-install:= -j1
 
