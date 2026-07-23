@@ -557,7 +557,6 @@ define KernelPackage/slhc
   SUBMENU:=$(NETWORK_SUPPORT_MENU)
   HIDDEN:=1
   TITLE:=Serial Line Header Compression
-  DEPENDS:=+kmod-lib-crc-ccitt
   KCONFIG:=CONFIG_SLHC
   FILES:=$(LINUX_DIR)/drivers/net/slip/slhc.ko
 endef
@@ -605,7 +604,7 @@ define KernelPackage/pppox
   SUBMENU:=$(NETWORK_SUPPORT_MENU)
   TITLE:=PPPoX helper
   DEPENDS:=kmod-ppp
-  KCONFIG:=CONFIG_PPPOE
+  HIDDEN:=1
   FILES:=$(LINUX_DIR)/drivers/net/ppp/pppox.ko
 endef
 
@@ -695,10 +694,8 @@ $(eval $(call KernelPackage,ipoa))
 define KernelPackage/mppe
   SUBMENU:=$(NETWORK_SUPPORT_MENU)
   TITLE:=Microsoft PPP compression/encryption
-  DEPENDS:=kmod-ppp +kmod-crypto-arc4 +kmod-crypto-sha1 +kmod-crypto-ecb
-  KCONFIG:= \
-	CONFIG_PPP_MPPE_MPPC \
-	CONFIG_PPP_MPPE
+  DEPENDS:=kmod-ppp +kmod-crypto-sha1
+  KCONFIG:=CONFIG_PPP_MPPE
   FILES:=$(LINUX_DIR)/drivers/net/ppp/ppp_mppe.ko
   AUTOLOAD:=$(call AutoProbe,ppp_mppe)
 endef
@@ -828,7 +825,7 @@ $(eval $(call KernelPackage,sched-cake))
 define KernelPackage/sched-connmark
   SUBMENU:=$(NETWORK_SUPPORT_MENU)
   TITLE:=Traffic shaper conntrack mark support
-  DEPENDS:=+kmod-sched-core +kmod-ipt-core +kmod-ipt-conntrack-extra
+  DEPENDS:=+kmod-sched-core +kmod-nf-conntrack
   KCONFIG:=CONFIG_NET_ACT_CONNMARK
   FILES:=$(LINUX_DIR)/net/sched/act_connmark.ko
   AUTOLOAD:=$(call AutoLoad,71, act_connmark)
@@ -839,7 +836,7 @@ $(eval $(call KernelPackage,sched-connmark))
 define KernelPackage/sched-ctinfo
   SUBMENU:=$(NETWORK_SUPPORT_MENU)
   TITLE:=Traffic shaper ctinfo support
-  DEPENDS:=+kmod-sched-core +kmod-ipt-core +kmod-ipt-conntrack-extra
+  DEPENDS:=+kmod-sched-core +kmod-nf-conntrack
   KCONFIG:=CONFIG_NET_ACT_CTINFO
   FILES:=$(LINUX_DIR)/net/sched/act_ctinfo.ko
   AUTOLOAD:=$(call AutoLoad,71, act_ctinfo)
@@ -1127,27 +1124,6 @@ define KernelPackage/tcp-scalable/description
 endef
 
 $(eval $(call KernelPackage,tcp-scalable))
-
-
-define KernelPackage/ax25
-  SUBMENU:=$(NETWORK_SUPPORT_MENU)
-  TITLE:=AX25 support
-  DEPENDS:=+kmod-lib-crc16
-  KCONFIG:= \
-	CONFIG_HAMRADIO=y \
-	CONFIG_AX25 \
-	CONFIG_MKISS
-  FILES:= \
-	$(LINUX_DIR)/net/ax25/ax25.ko \
-	$(LINUX_DIR)/drivers/net/hamradio/mkiss.ko
-  AUTOLOAD:=$(call AutoLoad,80,ax25 mkiss)
-endef
-
-define KernelPackage/ax25/description
- Kernel modules for AX25 support
-endef
-
-$(eval $(call KernelPackage,ax25))
 
 
 define KernelPackage/pktgen

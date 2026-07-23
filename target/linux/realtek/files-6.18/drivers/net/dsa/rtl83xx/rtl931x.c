@@ -3,7 +3,7 @@
 #include <asm/mach-rtl-otto/mach-rtl-otto.h>
 #include <linux/etherdevice.h>
 
-#include "rtl83xx.h"
+#include "rtl-otto.h"
 
 #define RTL931X_VLAN_PORT_TAG_STS_INTERNAL			0x0
 #define RTL931X_VLAN_PORT_TAG_STS_UNTAG				0x1
@@ -24,6 +24,12 @@
 #define RTL931X_VLAN_PORT_TAG_OTPID_KEEP_MASK			GENMASK(3, 3)
 #define RTL931X_VLAN_PORT_TAG_ITPID_IDX_MASK			GENMASK(2, 1)
 #define RTL931X_VLAN_PORT_TAG_ITPID_KEEP_MASK			GENMASK(0, 0)
+
+#define RTL931X_LED_CLK_SEL_MASK				GENMASK(16, 15)
+#define RTL931X_LED_CLK_SEL_800NS				0
+#define RTL931X_LED_CLK_SEL_400NS				1
+#define RTL931X_LED_CLK_SEL_200NS				2
+#define RTL931X_LED_CLK_SEL_100NS				3
 
 /* Definition of the RTL931X-specific template field IDs as used in the PIE */
 enum template_field_id {
@@ -213,23 +219,6 @@ const struct rtldsa_mib_desc rtldsa_931x_mib_desc = {
 	.list = rtldsa_931x_mib_list
 };
 
-inline void rtl931x_exec_tbl0_cmd(u32 cmd)
-{
-	sw_w32(cmd, RTL931X_TBL_ACCESS_CTRL_0);
-	do { } while (sw_r32(RTL931X_TBL_ACCESS_CTRL_0) & (1 << 20));
-}
-
-inline void rtl931x_exec_tbl1_cmd(u32 cmd)
-{
-	sw_w32(cmd, RTL931X_TBL_ACCESS_CTRL_1);
-	do { } while (sw_r32(RTL931X_TBL_ACCESS_CTRL_1) & (1 << 17));
-}
-
-inline int rtl931x_tbl_access_data_0(int i)
-{
-	return RTL931X_TBL_ACCESS_DATA_0(i);
-}
-
 static int
 rtldsa_931x_vlan_profile_get(int idx, struct rtldsa_vlan_profile *profile)
 {
@@ -267,31 +256,30 @@ rtldsa_931x_vlan_profile_dump(struct rtl838x_switch_priv *priv, int idx)
 		p.unkn_mc_fld.pmsks.ip, p.unkn_mc_fld.pmsks.ip6);
 }
 
-static int rtldsa_931x_stp_get(struct rtl838x_switch_priv *priv, u16 msti, int port, u32 port_state[])
+static int rtldsa_931x_stp_get(struct rtl838x_switch_priv *priv, u16 msti, int port)
 {
+	struct table_reg *r = rtl_table_get(RTL9310_TBL_0, 5);
 	int idx = 3 - ((port + 8) / 16);
 	int bit = 2 * ((port + 8) % 16);
-	u32 cmd = 1 << 20 | /* Execute cmd */
-		  0 << 19 | /* Read */
-		  5 << 15 | /* Table type 0b101 */
-		  (msti & 0x3fff);
+	int state;
 
-	priv->r->exec_tbl0_cmd(cmd);
-	for (int i = 0; i < 4; i++)
-		port_state[i] = sw_r32(priv->r->tbl_access_data_0(i));
+	rtl_table_read(r, msti);
+	state = (sw_r32(rtl_table_data(r, idx)) >> bit) & 0x3;
+	rtl_table_release(r);
 
-	return (port_state[idx] >> bit) & 3;
+	return state;
 }
 
-static void rtl931x_stp_set(struct rtl838x_switch_priv *priv, u16 msti, u32 port_state[])
+static void rtl931x_stp_set(struct rtl838x_switch_priv *priv, u16 msti, int port, int state)
 {
-	u32 cmd = 1 << 20 | /* Execute cmd */
-		  1 << 19 | /* Write */
-		  5 << 15 | /* Table type 0b101 */
-		  (msti & 0x3fff);
-	for (int i = 0; i < 4; i++)
-		sw_w32(port_state[i], priv->r->tbl_access_data_0(i));
-	priv->r->exec_tbl0_cmd(cmd);
+	struct table_reg *r = rtl_table_get(RTL9310_TBL_0, 5);
+	int idx = 3 - ((port + 8) / 16);
+	int bit = 2 * ((port + 8) % 16);
+
+	rtl_table_read(r, msti);
+	sw_w32_mask(0x3 << bit, state << bit, rtl_table_data(r, idx));
+	rtl_table_write(r, msti);
+	rtl_table_release(r);
 }
 
 static inline int rtldsa_931x_trk_mbr_ctr(int group)
@@ -1621,11 +1609,39 @@ static void rtldsa_931x_led_init(struct rtl838x_switch_priv *priv)
 	struct device *dev = priv->dev;
 	struct device_node *node;
 	u8 leds_in_set[4] = {};
+	u32 clk_freq;
+	int ret;
 
 	node = of_find_compatible_node(NULL, NULL, "realtek,rtl9300-leds");
 	if (!node) {
 		dev_dbg(dev, "No compatible LED node found\n");
 		return;
+	}
+
+	ret = of_property_read_u32(node, "clock-frequency", &clk_freq);
+	if (!ret) {
+		u8 clk_sel;
+
+		switch (clk_freq) {
+		case 10000000:
+			clk_sel = RTL931X_LED_CLK_SEL_100NS;
+			break;
+		case 5000000:
+			clk_sel = RTL931X_LED_CLK_SEL_200NS;
+			break;
+		case 1250000:
+			clk_sel = RTL931X_LED_CLK_SEL_800NS;
+			break;
+		default:
+			dev_warn(dev, "invalid LED clock frequency, falling back to default\n");
+			fallthrough;
+		case 2500000:
+			clk_sel = RTL931X_LED_CLK_SEL_400NS;
+			break;
+		}
+
+		sw_w32_mask(RTL931X_LED_CLK_SEL_MASK,
+			    FIELD_PREP(RTL931X_LED_CLK_SEL_MASK, clk_sel), RTL931X_LED_GLB_CTRL);
 	}
 
 	for (int set = 0; set < 4; set++) {
@@ -1678,7 +1694,7 @@ static void rtldsa_931x_led_init(struct rtl838x_switch_priv *priv)
 		sw_w32_mask(0x3 << pos, 0, RTL931X_LED_PORT_COPR_SET_SEL_CTRL(i));
 
 		/* Skip port if not present (auto-detect) or not in forced mask */
-		if (!priv->ports[i].phy && !priv->ports[i].pcs && !(forced_leds_per_port[i]))
+		if (!priv->ports[i].phy && !priv->ports[i].has_pcs && !(forced_leds_per_port[i]))
 			continue;
 
 		if (forced_leds_per_port[i] > 0)
@@ -1934,6 +1950,12 @@ static void rtldsa_931x_qos_init(struct rtl838x_switch_priv *priv)
 }
 
 const struct rtldsa_config rtldsa_931x_cfg = {
+	.switch_ops = &rtldsa_93xx_switch_ops,
+	.phylink_mac_ops = &rtldsa_93xx_phylink_mac_ops,
+	.spanning_tree_ctrl = RTL931X_ST_CTRL,
+	.l2_bucket_size = 8,
+	.n_mst = 128,
+	.num_lag_ids = 16,
 	.cpu_port = RTL931X_CPU_PORT,
 	.fib_entries = 16384, /* TODO: has 32K but code cannot handle that */
 	.mask_port_reg_be = rtl839x_mask_port_reg_be,
@@ -1959,9 +1981,6 @@ const struct rtldsa_config rtldsa_931x_cfg = {
 	.set_ageing_time = rtl931x_set_ageing_time,
 	.smi_poll_ctrl = RTL931X_SMI_PORT_POLLING_CTRL,
 	.l2_tbl_flush_ctrl = RTL931X_L2_TBL_FLUSH_CTRL,
-	.exec_tbl0_cmd = rtl931x_exec_tbl0_cmd,
-	.exec_tbl1_cmd = rtl931x_exec_tbl1_cmd,
-	.tbl_access_data_0 = rtl931x_tbl_access_data_0,
 	.isr_glb_src = RTL931X_ISR_GLB_SRC,
 	.isr_port_link_sts_chg = RTL931X_ISR_PORT_LINK_STS_CHG,
 	.imr_port_link_sts_chg = RTL931X_IMR_PORT_LINK_STS_CHG,
