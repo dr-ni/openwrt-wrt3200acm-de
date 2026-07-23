@@ -499,16 +499,24 @@ function dpp_channel_handle_disconnect(channel)
 	}
 }
 
-function dpp_rx_via_channel(ifname, method, data)
+function dpp_rx_via_channel(ifname, method, data, no_reply)
 {
 	let hook = wpas.data.dpp_hooks[ifname];
 	if (!hook)
 		return null;
 
-	let response = hook.channel.request({
+	let req = {
 		method: method,
 		data: data,
-	});
+	};
+
+	if (no_reply) {
+		req.return = "ignore";
+		hook.channel.request(req);
+		return null;
+	}
+
+	let response = hook.channel.request(req);
 	if (hook.channel.error(true) == libubus.STATUS_TIMEOUT) {
 		hook.timeout_count++;
 		if (hook.timeout_count >= 3) {
@@ -544,6 +552,8 @@ let main_obj = {
 				for (let ifname in phy.data)
 					iface_stop(phy.data[ifname]);
 				for (let name, data in wpas.data.mld) {
+					if (data.phy != phy.name)
+						continue;
 					data.radio_mask_present &= ~radio_mask;
 					if (data.radio_mask_up & radio_mask)
 						mld_update_iface(name, data);
@@ -553,6 +563,8 @@ let main_obj = {
 
 				let found;
 				for (let name, data in wpas.data.mld) {
+					if (data.phy != phy.name)
+						continue;
 					if (!(data.radio_mask & radio_mask))
 						continue;
 					data.radio_mask_present |= radio_mask;
@@ -596,9 +608,12 @@ let main_obj = {
 
 			let ifnames = keys(phy.data);
 			let radio_mask = phy.radio != null ? (1 << phy.radio) : 0;
-			for (let name, data in wpas.data.mld)
+			for (let name, data in wpas.data.mld) {
+				if (data.phy != phy.name)
+					continue;
 				if (data.radio_mask_up & radio_mask)
 					push(ifnames, name);
+			}
 
 			for (let ifname in ifnames) {
 				try {
@@ -939,11 +954,14 @@ function iface_ubus_remove(ifname)
 
 function iface_ubus_notify(ifname, event)
 {
+	event = { ifname, event };
+
+	dpp_rx_via_channel(ifname, "ctrl-event", event, true);
 	let obj = wpas.data.iface_ubus[ifname];
 	if (!obj)
 		return;
 
-	obj.notify('ctrl-event', { event }, null, null, null, -1);
+	obj.notify('ctrl-event', event, null, null, null, -1);
 }
 
 function iface_ubus_add(ifname)

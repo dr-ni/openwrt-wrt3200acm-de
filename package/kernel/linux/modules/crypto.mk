@@ -145,7 +145,7 @@ define KernelPackage/crypto-crc32
   HIDDEN:=1
   FILES:=$(LINUX_DIR)/crypto/crc32_generic.ko@lt6.18 \
 	$(LINUX_DIR)/crypto/crc32-cryptoapi.ko@ge6.18
-  AUTOLOAD:=$(call AutoLoad,04,LINUX_6_12:crc32_generic !LINUX_6_12:crc32-cryptoapi,1)
+  AUTOLOAD:=$(call AutoLoad,04,crc32_generic@lt6.18 crc32-cryptoapi@ge6.18,1)
   $(call AddDepends/crypto)
 endef
 
@@ -158,7 +158,7 @@ define KernelPackage/crypto-crc32c
   KCONFIG:=CONFIG_CRYPTO_CRC32C
   FILES:=$(LINUX_DIR)/crypto/crc32c_generic.ko@lt6.18 \
 	$(LINUX_DIR)/crypto/crc32c-cryptoapi.ko@ge6.18
-  AUTOLOAD:=$(call AutoLoad,04,LINUX_6_12:crc32c_generic !LINUX_6_12:crc32c-cryptoapi,1)
+  AUTOLOAD:=$(call AutoLoad,04,crc32c_generic@lt6.18 crc32c-cryptoapi@ge6.18,1)
   $(call AddDepends/crypto)
 endef
 
@@ -532,13 +532,9 @@ define KernelPackage/crypto-hw-eip93
   KCONFIG:= \
 	CONFIG_CRYPTO_HW=y \
 	CONFIG_CRYPTO_DEV_EIP93 \
-	CONFIG_CRYPTO_DEV_EIP93_AES=y@lt6.18 \
-	CONFIG_CRYPTO_DEV_EIP93_DES=y@lt6.18 \
-	CONFIG_CRYPTO_DEV_EIP93_AEAD=y@lt6.18 \
 	CONFIG_CRYPTO_DEV_EIP93_GENERIC_SW_MAX_LEN=256 \
 	CONFIG_CRYPTO_DEV_EIP93_AES_128_SW_MAX_LEN=512
-  FILES:=$(LINUX_DIR)/drivers/crypto/mtk-eip93/crypto-hw-eip93.ko@lt6.18 \
-    $(LINUX_DIR)/drivers/crypto/inside-secure/eip93/crypto-hw-eip93.ko@ge6.18
+  FILES:=$(LINUX_DIR)/drivers/crypto/inside-secure/eip93/crypto-hw-eip93.ko
   AUTOLOAD:=$(call AutoLoad,09,crypto-hw-eip93)
   $(call AddDepends/crypto)
 endef
@@ -548,10 +544,6 @@ Kernel module to enable EIP-93 Crypto engine as found
 in Mediatek MT7621 and Airoha SoCs.
 It enables DES/3DES/AES ECB/CBC/CTR and
 IPSEC offload with authenc(hmac(sha1/sha256), aes/cbc/rfc3686)
-endef
-
-define KernelPackage/crypto-hw-eip93/airoha
-  FILES:=$(LINUX_DIR)/drivers/crypto/inside-secure/eip93/crypto-hw-eip93.ko
 endef
 
 $(eval $(call KernelPackage,crypto-hw-eip93))
@@ -740,22 +732,22 @@ define KernelPackage/crypto-md5
   DEPENDS:=+kmod-crypto-hash
   KCONFIG:= \
 	CONFIG_CRYPTO_MD5 \
-	CONFIG_CRYPTO_MD5_OCTEON \
-	CONFIG_CRYPTO_MD5_PPC
+	CONFIG_CRYPTO_MD5_OCTEON@lt6.18 \
+	CONFIG_CRYPTO_MD5_PPC@lt6.18
   FILES:=$(LINUX_DIR)/crypto/md5.ko \
 	$(LINUX_DIR)/lib/crypto/libmd5.ko@ge6.18
-  AUTOLOAD:=$(call AutoLoad,09,md5 !LINUX_6_12:libmd5)
+  AUTOLOAD:=$(call AutoLoad,09,md5 libmd5@ge6.18)
   $(call AddDepends/crypto)
 endef
 
 define KernelPackage/crypto-md5/octeon
-  FILES+=$(LINUX_DIR)/arch/mips/cavium-octeon/crypto/octeon-md5.ko
-  AUTOLOAD+=$(call AutoLoad,09,octeon-md5)
+  FILES+=$(LINUX_DIR)/arch/mips/cavium-octeon/crypto/octeon-md5.ko@lt6.18
+  AUTOLOAD+=$(call AutoLoad,09,LINUX_6_12:octeon-md5)
 endef
 
 define KernelPackage/crypto-md5/powerpc
-  FILES+=$(LINUX_DIR)/arch/powerpc/crypto/md5-ppc.ko
-  AUTOLOAD+=$(call AutoLoad,09,md5-ppc)
+  FILES+=$(LINUX_DIR)/arch/powerpc/crypto/md5-ppc.ko@lt6.18
+  AUTOLOAD+=$(call AutoLoad,09,LINUX_6_12:md5-ppc)
 endef
 
 ifdef KernelPackage/crypto-md5/$(ARCH)
@@ -776,101 +768,6 @@ define KernelPackage/crypto-michael-mic
 endef
 
 $(eval $(call KernelPackage,crypto-michael-mic))
-
-
-define KernelPackage/crypto-misc
-  TITLE:=Other CryptoAPI modules
-  DEPENDS:=+kmod-crypto-xts +kmod-crypto-user
-  KCONFIG:= \
-	CONFIG_CRYPTO_USER_API_ENABLE_OBSOLETE=y \
-	CONFIG_CRYPTO_CAMELLIA_X86_64 \
-	CONFIG_CRYPTO_BLOWFISH_X86_64 \
-	CONFIG_CRYPTO_TWOFISH_X86_64 \
-	CONFIG_CRYPTO_TWOFISH_X86_64_3WAY \
-	CONFIG_CRYPTO_SERPENT_SSE2_X86_64 \
-	CONFIG_CRYPTO_CAMELLIA_AESNI_AVX_X86_64 \
-	CONFIG_CRYPTO_CAST5_AVX_X86_64 \
-	CONFIG_CRYPTO_CAST6_AVX_X86_64 \
-	CONFIG_CRYPTO_TWOFISH_AVX_X86_64 \
-	CONFIG_CRYPTO_SERPENT_AVX_X86_64 \
-	CONFIG_CRYPTO_CAMELLIA_AESNI_AVX2_X86_64 \
-	CONFIG_CRYPTO_SERPENT_AVX2_X86_64 \
-	CONFIG_CRYPTO_SERPENT_SSE2_586 \
-	CONFIG_CRYPTO_ANUBIS \
-	CONFIG_CRYPTO_BLOWFISH \
-	CONFIG_CRYPTO_CAMELLIA \
-	CONFIG_CRYPTO_CAST5 \
-	CONFIG_CRYPTO_CAST6 \
-	CONFIG_CRYPTO_KHAZAD \
-	CONFIG_CRYPTO_SERPENT \
-	CONFIG_CRYPTO_TEA \
-	CONFIG_CRYPTO_TWOFISH \
-	CONFIG_CRYPTO_TWOFISH_COMMON \
-	CONFIG_CRYPTO_TWOFISH_586 \
-	CONFIG_CRYPTO_WP512
-  FILES:= \
-	$(LINUX_DIR)/crypto/anubis.ko \
-	$(LINUX_DIR)/crypto/camellia_generic.ko \
-	$(LINUX_DIR)/crypto/cast_common.ko \
-	$(LINUX_DIR)/crypto/cast5_generic.ko \
-	$(LINUX_DIR)/crypto/cast6_generic.ko \
-	$(LINUX_DIR)/crypto/khazad.ko \
-	$(LINUX_DIR)/crypto/tea.ko \
-	$(LINUX_DIR)/crypto/twofish_common.ko \
-	$(LINUX_DIR)/crypto/wp512.ko \
-	$(LINUX_DIR)/crypto/twofish_generic.ko \
-	$(LINUX_DIR)/crypto/blowfish_common.ko \
-	$(LINUX_DIR)/crypto/blowfish_generic.ko \
-	$(LINUX_DIR)/crypto/serpent_generic.ko
-  AUTOLOAD:=$(call AutoLoad,10,anubis camellia_generic cast_common \
-	cast5_generic cast6_generic khazad tea twofish_common \
-	wp512 blowfish_common serpent_generic)
-  ifndef CONFIG_TARGET_x86
-	AUTOLOAD+= $(call AutoLoad,10,twofish_generic blowfish_generic)
-  endif
-  $(call AddDepends/crypto)
-endef
-
-ifndef CONFIG_TARGET_x86_64
-  define KernelPackage/crypto-misc/x86
-    FILES+= \
-	$(LINUX_DIR)/arch/x86/crypto/twofish-i586.ko \
-	$(LINUX_DIR)/arch/x86/crypto/serpent-sse2-i586.ko \
-	$(LINUX_DIR)/crypto/cryptd.ko \
-	$(LINUX_DIR)/crypto/crypto_simd.ko
-    AUTOLOAD+= $(call AutoLoad,10,cryptd \
-	serpent-sse2-i586 twofish-i586 blowfish_generic)
-  endef
-endif
-
-ifndef CONFIG_TARGET_uml
-define KernelPackage/crypto-misc/x86_64
-  FILES+= \
-	$(LINUX_DIR)/arch/x86/crypto/camellia-x86_64.ko \
-	$(LINUX_DIR)/arch/x86/crypto/blowfish-x86_64.ko \
-	$(LINUX_DIR)/arch/x86/crypto/twofish-x86_64.ko \
-	$(LINUX_DIR)/arch/x86/crypto/twofish-x86_64-3way.ko \
-	$(LINUX_DIR)/arch/x86/crypto/serpent-sse2-x86_64.ko \
-	$(LINUX_DIR)/arch/x86/crypto/camellia-aesni-avx-x86_64.ko \
-	$(LINUX_DIR)/arch/x86/crypto/cast5-avx-x86_64.ko \
-	$(LINUX_DIR)/arch/x86/crypto/cast6-avx-x86_64.ko \
-	$(LINUX_DIR)/arch/x86/crypto/twofish-avx-x86_64.ko \
-	$(LINUX_DIR)/arch/x86/crypto/serpent-avx-x86_64.ko \
-	$(LINUX_DIR)/arch/x86/crypto/camellia-aesni-avx2.ko \
-	$(LINUX_DIR)/arch/x86/crypto/serpent-avx2.ko
-  AUTOLOAD+= $(call AutoLoad,10,camellia-x86_64 \
-	camellia-aesni-avx-x86_64 camellia-aesni-avx2 cast5-avx-x86_64 \
-	cast6-avx-x86_64 twofish-x86_64 twofish-x86_64-3way \
-	twofish-avx-x86_64 blowfish-x86_64 serpent-avx-x86_64 serpent-avx2)
-endef
-endif
-
-ifdef KernelPackage/crypto-misc/$(ARCH)
-  KernelPackage/crypto-misc/$(CRYPTO_TARGET)=\
-	  $(KernelPackage/crypto-misc/$(ARCH))
-endif
-
-$(eval $(call KernelPackage,crypto-misc))
 
 
 define KernelPackage/crypto-null
@@ -983,7 +880,7 @@ define KernelPackage/crypto-sha1
 	CONFIG_CRYPTO_SHA1_SSSE3@lt6.18
   FILES:=$(LINUX_DIR)/crypto/sha1_generic.ko@lt6.18 \
 	$(LINUX_DIR)/crypto/sha1.ko@ge6.18
-  AUTOLOAD:=$(call AutoLoad,09,LINUX_6_12:sha1_generic !LINUX_6_12:sha1)
+  AUTOLOAD:=$(call AutoLoad,09,sha1_generic@lt6.18 sha1@ge6.18)
   $(call AddDepends/crypto)
 endef
 
@@ -1069,7 +966,7 @@ define KernelPackage/crypto-sha256
 	$(LINUX_DIR)/crypto/sha256_generic.ko@lt6.18 \
 	$(LINUX_DIR)/crypto/sha256.ko@ge6.18 \
 	$(LINUX_DIR)/lib/crypto/libsha256.ko
-  AUTOLOAD:=$(call AutoLoad,09,LINUX_6_12:sha256_generic !LINUX_6_12:sha256)
+  AUTOLOAD:=$(call AutoLoad,09,sha256_generic@lt6.18 sha256@ge6.18)
   $(call AddDepends/crypto)
 endef
 
@@ -1130,7 +1027,7 @@ define KernelPackage/crypto-sha512
   FILES:=$(LINUX_DIR)/crypto/sha512_generic.ko@lt6.18 \
 	$(LINUX_DIR)/crypto/sha512.ko@ge6.18 \
 	$(LINUX_DIR)/lib/crypto/libsha512.ko@ge6.18
-  AUTOLOAD:=$(call AutoLoad,09,LINUX_6_12:sha512_generic !LINUX_6_12:sha512)
+  AUTOLOAD:=$(call AutoLoad,09,sha512_generic@lt6.18 sha512@ge6.18)
   $(call AddDepends/crypto)
 endef
 
@@ -1141,8 +1038,8 @@ define KernelPackage/crypto-sha512/arm
 endef
 
 define KernelPackage/crypto-sha512/aarch64
-  FILES+=$(LINUX_DIR)/arch/arm64/crypto/sha512-arm64.ko
-  AUTOLOAD+=$(call AutoLoad,09,sha512-arm64)
+  FILES+=$(LINUX_DIR)/arch/arm64/crypto/sha512-arm64.ko@lt6.18
+  AUTOLOAD+=$(call AutoLoad,09,!LINUX_6_18:sha512-arm64)
 endef
 
 KernelPackage/crypto-sha512/imx/cortexa7=$(KernelPackage/crypto-sha512/arm)
